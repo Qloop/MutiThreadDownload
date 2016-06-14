@@ -6,6 +6,8 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.Messenger;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
@@ -30,8 +32,11 @@ public class DownLoadService extends Service {
     public static final String ACTION_UPDATE = "update";
     public static final String ACTION_FINISHED = "finished";
     public static final int MSG_INIT = 0;
+    public static final int MSG_BIND = 1;
     public static final String DOWNLOAD_PATH = Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED) ? Environment.getExternalStorageDirectory() + "/downloads/"
             : Environment.getDownloadCacheDirectory() + "/download/";
+
+    private Messenger mActivityMessager;
 
     //下载任务的集合
     private Map<Integer, DownloadTask> mTasks = new LinkedHashMap<>();
@@ -60,7 +65,8 @@ public class DownLoadService extends Service {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        Messenger messenger = new Messenger(mHandler);
+        return messenger.getBinder();
     }
 
     Handler mHandler = new Handler() {
@@ -73,6 +79,15 @@ public class DownLoadService extends Service {
                     task.download();
                     //把下载任务添加到集合中
                     mTasks.put(fileInfo.getId(), task);
+                    //发送启动通知的广播
+                    Log.i("send-=-=-=","send--=-=-=-=-=-=-==-=-=-=-=-==");
+                    Intent intent = new Intent(DownLoadService.ACTION_START);
+                    intent.putExtra("fileInfo", fileInfo);
+                    sendBroadcast(intent);
+                    break;
+                case MSG_BIND:
+                    //处理绑定的Activity中的Messager
+                    mActivityMessager = msg.replyTo;
                     break;
             }
 

@@ -17,6 +17,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -36,6 +38,8 @@ public class DownloadTask {
     private int mThreadCount;
 
     public static ExecutorService sExecutor = Executors.newCachedThreadPool();
+
+    private Timer mTimer = new Timer();
 
     public DownloadTask(Context mContext, FileInfo mFileInfo, int mThreadCount) {
         this.mContext = mContext;
@@ -68,6 +72,17 @@ public class DownloadTask {
             sExecutor.execute(downloadThread);
             mThreadList.add(downloadThread);
         }
+
+        //启动定时任务
+        mTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                Intent intent = new Intent(DownLoadService.ACTION_UPDATE);
+                intent.putExtra("finished", finished * 100 / mFileInfo.getLength());
+                intent.putExtra("id", mFileInfo.getId());
+                mContext.sendBroadcast(intent);
+            }
+        }, 1000, 1000);
     }
 
     class DownloadThread extends Thread {
@@ -96,7 +111,7 @@ public class DownloadTask {
                 raf = new RandomAccessFile(file, "rwd");
                 raf.seek(start);
 
-                Intent intent = new Intent(DownLoadService.ACTION_UPDATE);
+//                Intent intent = new Intent(DownLoadService.ACTION_UPDATE);
                 finished += threadInfo.getFinished();
 
                 //开始下载
@@ -108,15 +123,15 @@ public class DownloadTask {
                     long time = System.currentTimeMillis();
                     while ((len = inputStream.read(buffer)) != -1) {
                         raf.write(buffer, 0, len);
-                        //进度发送给Activity
-                        finished += len; //整个文件的下载进度
-                        threadInfo.setFinished(threadInfo.getFinished() + len);
-                        if (System.currentTimeMillis() - time > 1000) {
-                            time = System.currentTimeMillis();
-                            intent.putExtra("finished", finished * 100 / mFileInfo.getLength());
-                            intent.putExtra("id", mFileInfo.getId());
-                            mContext.sendBroadcast(intent);
-                        }
+//                        //进度发送给Activity
+//                        finished += len; //整个文件的下载进度
+//                        threadInfo.setFinished(threadInfo.getFinished() + len);
+//                        if (System.currentTimeMillis() - time > 1000) {
+//                            time = System.currentTimeMillis();
+//                            intent.putExtra("finished", finished * 100 / mFileInfo.getLength());
+//                            intent.putExtra("id", mFileInfo.getId());
+//                            mContext.sendBroadcast(intent);
+//                        }
                         //下载暂停时保存下载进度
                         if (isPause) {
                             mThreadDAO.updateThread(threadInfo.getUrl(), threadInfo.getId(), threadInfo.getFinished());
@@ -158,6 +173,8 @@ public class DownloadTask {
         }
         //全部执行完毕之后发送广播更新UI
         if (allFinished) {
+            //下载结束 取消定时器
+            mTimer.cancel();
             Intent intent = new Intent(DownLoadService.ACTION_FINISHED);
             intent.putExtra("fileInfo", mFileInfo);
             mContext.sendBroadcast(intent);

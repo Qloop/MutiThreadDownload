@@ -14,7 +14,7 @@
 
     <ProgressBar
         android:id="@+id/pb_download_progress"
-        style="@android:style/Widget.ProgressBar.Horizontal"
+        style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
@@ -29,4 +29,5 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/pause" />
+
 </LinearLayout>
